@@ -1,0 +1,33 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Orders — Container
+
+Person(customer, "Покупатель", "Оформляет заказы")
+
+System_Ext(payment, "Payment Provider", "Обрабатывает платежи")
+System_Ext(sms, "SMS Provider", "Отправляет SMS")
+
+System_Boundary(orders, "Orders") {
+    Container(ui, "Web UI", "HTML / JavaScript", "Создание заказа и просмотр статуса")
+
+    Container(lb, "Load Balancer", "Nginx / HAProxy", "Распределяет запросы между экземплярами API")
+
+    Container(api, "Core API — несколько экземпляров", "Go / Stateless", "Создаёт заказы и фоновые задачи; масштабируется горизонтально")
+
+    Container(worker, "Background Workers — несколько экземпляров", "Go", "Обрабатывают оплату и SMS; выполняют ретраи с задержкой")
+
+    ContainerDb(db, "Database", "PostgreSQL", "Заказы и фоновые задачи; вертикальное масштабирование")
+}
+
+Rel(customer, ui, "Использует", "HTTPS")
+Rel(ui, lb, "Создаёт заказ, запрашивает статус", "HTTPS / JSON")
+Rel(lb, api, "Распределяет запросы по здоровым экземплярам", "HTTP / JSON")
+
+Rel(api, db, "Сохраняет заказ и задачи одной транзакцией; читает заказы", "PostgreSQL wire protocol / TCP")
+
+Rel(worker, db, "Атомарно забирают задачи; сохраняют результат и время следующей попытки", "PostgreSQL wire protocol / TCP")
+Rel(worker, payment, "Инициируют оплату с ключом идемпотентности; проверяют статус", "HTTPS / JSON")
+Rel(worker, sms, "Отправляют уведомления", "HTTPS / JSON")
+
+@enduml

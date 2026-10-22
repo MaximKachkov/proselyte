@@ -1,0 +1,31 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Orders — Core API Components
+
+Container(lb, "Load Balancer", "Nginx / HAProxy", "Распределяет запросы между экземплярами API")
+Container(worker, "Background Workers", "Go", "Обрабатывают оплату и SMS; выполняют ретраи")
+ContainerDb(db, "Database", "PostgreSQL", "Заказы и фоновые задачи")
+
+Container_Boundary(api, "Core API — один из stateless-экземпляров") {
+    Component(controller, "Orders Controller", "Go / net/http", "Принимает запросы, проверяет формат, возвращает ответы")
+    Component(service, "Orders Service", "Go", "Проверяет бизнес-правила; создаёт заказ и задачи оплаты/SMS")
+    Component(tx, "Transaction Manager", "Go / pgx", "Управляет общей транзакцией")
+    Component(orderRepo, "Orders Repository", "Go / pgx", "Сохраняет и читает заказы")
+    Component(taskRepo, "Tasks Repository", "Go / pgx", "Сохраняет фоновые задачи")
+}
+
+Rel(lb, controller, "Направляет запросы создания и чтения заказов", "HTTP / JSON")
+Rel(controller, service, "Вызывает операции с заказами", "Go method call")
+
+Rel(service, tx, "Выполняет создание заказа и задач в одной транзакции", "Go method call")
+Rel(service, orderRepo, "Сохраняет заказ через общий tx; читает заказы", "Go method call")
+Rel(service, taskRepo, "Сохраняет задачи оплаты и SMS через тот же tx", "Go method call")
+
+Rel(tx, db, "BEGIN / COMMIT / ROLLBACK", "PostgreSQL wire protocol / TCP")
+Rel(orderRepo, db, "Записывает и читает заказы", "PostgreSQL wire protocol / TCP")
+Rel(taskRepo, db, "Записывает задачи", "PostgreSQL wire protocol / TCP")
+
+Rel(worker, db, "Атомарно забирают задачи; обновляют статусы и планируют ретраи", "PostgreSQL wire protocol / TCP")
+
+@enduml

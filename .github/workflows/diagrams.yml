@@ -1,0 +1,20 @@
+name: Check diagrams
+
+on:
+  pull_request:
+
+jobs:
+  check-diagrams:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y plantuml graphviz make
+
+      - name: Check PlantUML syntax
+        run: make check-diagrams
