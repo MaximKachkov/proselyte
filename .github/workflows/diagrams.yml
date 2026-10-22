@@ -2,6 +2,7 @@ name: Check diagrams
 
 on:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   check-diagrams:
