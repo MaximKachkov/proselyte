@@ -22,6 +22,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y graphviz make
+
+      - name: Download PlantUML
+        run: |
           curl -fL --retry 3 \
             https://github.com/plantuml/plantuml/releases/download/v1.2025.10/plantuml-1.2025.10.jar \
             -o /tmp/plantuml.jar
